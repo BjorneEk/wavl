@@ -80,9 +80,7 @@ void single_rotate(wavl_t **tree, wavl_t *x, bool left)
 
 	i = left? 0 : 1;
 	y = x->parent;
-	// = x->succ[i];
-	//printf("tree: %d %d\n", *(int*)(*tree)->data, *tree == y);
-	//printf("i:%d y = (%d) (%d, %d), x = (%d) (%d, %d)\n", i,*(int*)y->data, y->succ[0] == NULL ? -1 : *(int*)y->succ[0]->data, y->succ[1] == NULL ? -1 : *(int*)y->succ[1]->data, *(int*)x->data, x->succ[0] == NULL ? -1 : *(int*)x->succ[0]->data, x->succ[1] == NULL ? -1 : *(int*)x->succ[1]->data);
+
 	y->succ[!i] = x->succ[i];
 	if (y->succ[!i] != NULL)
 		y->succ[!i]->parent = y;
@@ -97,9 +95,6 @@ void single_rotate(wavl_t **tree, wavl_t *x, bool left)
 		x->parent = y->parent;
 	}
 	y->parent = x;
-	//printf("tree = (%d) (%d) (%d)\n", *(int*)(*tree)->data, *(int*)(*tree)->succ[0]->data, *(int*)(*tree)->succ[1]->data);
-	//exit(-1);
-
 }
 
 static bool is_0_1_node(wavl_t *x)
@@ -120,6 +115,11 @@ static bool is_0_2_node(wavl_t *x)
 	parp = get_par(x->parent);
 	pars = get_par(sibling(x));
 	return (par && parp && pars) || (!par && !parp && !pars);
+}
+
+static bool is_1_child(wavl_t *y)
+{
+	return get_par(y) == get_par(y->parent);
 }
 bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 {
@@ -149,8 +149,7 @@ bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 
 	*n = node(data);
 	(*n)->parent = p;
-	if (*(int*) (*n)->data == 3)
-		printf("tree = (%d) (%d) (%d)\n", *(int*)(*tree)->data, *(int*)(*tree)->succ[1]->data, *(int*)(*tree)->succ[1]->succ[1]->data);
+
 	if (!should_rebalance)
 		return true;
 
@@ -171,8 +170,8 @@ bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 	z = x->parent;
 	i = x == z->succ[0] ? 0 : 1;
 	y = x->succ[!i];
-	//printf("left: %s\n",i?"true":"false");
-	if (y == NULL || get_par(y) == get_par(x)) {
+
+	if (y == NULL || is_1_child(y)) {
 		single_rotate(tree, x, i);
 		dem(z);
 	} else {
