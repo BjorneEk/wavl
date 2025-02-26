@@ -9,7 +9,8 @@ MAIN:=main.c
 
 #OPT_FLAGS:=-O3 -flto
 OPT_FLAGS:=-O0
-CFLAGS:= -std=c2x -pedantic -Wall -Werror -Wno-newline-eof -Wno-gnu-binary-literal -g $(OPT_FLAGS) -DDEBUG
+SILENCE=-Wno-gnu-statement-expression-from-macro-expansion
+CFLAGS:= -std=c2x -pedantic -Wall -Werror -Wno-newline-eof -Wno-gnu-binary-literal -g $(OPT_FLAGS) $(SILENCE) -DDEBUG
 
 TEST_BIN:=$(BIN)/test
 LIB_TARGET:=$(BIN)/$(LIBNAME)

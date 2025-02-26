@@ -64,10 +64,12 @@ void double_rotate(wavl_t **tree, wavl_t *y, bool left)
 	}
 
 	z->succ[!i] = v->succ[i];
-	v->succ[i]->parent = z;
+	if (v->succ[i] != NULL)
+		v->succ[i]->parent = z;
 
 	y->succ[i] = v->succ[!i];
-	v->succ[!i]->parent = y;
+	if (v->succ[!i] != NULL)
+		v->succ[!i]->parent = y;
 
 	v->succ[i] = z;
 	z->parent = v;
@@ -253,15 +255,15 @@ static bool is_2_2_node(wavl_t *y)
 {
 	return get_par(y) == get_par(y->succ[0]) && get_par(y) == get_par(y->succ[1]);
 }
-
+/*
 static void print_node(wavl_t *n)
 {
-	printf("%d(%d, %d)\n",
+	printf("%d(%d, %d) (%d)\n",
 		n != NULL ? *(int*)n->data : -1,
 		n != NULL ? n->succ[0] != NULL ? *(int*)n->succ[0]->data : -1 : -1,
-		n != NULL ? n->succ[1] != NULL ? *(int*)n->succ[1]->data : -1 : -1);
+		n != NULL ? n->succ[1] != NULL ? *(int*)n->succ[1]->data : -1 : -1, get_par(n));
 }
-
+*/
 static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 {
 	wavl_t	*x,
@@ -279,17 +281,17 @@ static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 
 	x = n;
 	xp = np;
-	printf("n ");print_node(n);
-	printf("np ");print_node(np);
+	//printf("x ");print_node(x);
+	//printf("xp ");print_node(xp);
 	do {
 		xpp = xp->parent;
 
 		new_3_node = xpp != NULL && is_2_child(xp);
 
 		y = xp->succ[xp->succ[0] == x ? 1 : 0];
-
+		//printf("y ");print_node(y);
 		if (is_2_child(y)) {
-			dem(x);
+			dem(xp);
 		} else if (is_2_2_node(y)) {
 			dem(xp);
 			dem(y);
@@ -305,14 +307,19 @@ static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 		return;
 
 	z = xp;
-	left = x == xp->succ[0] ? 1 : 0;
+	left = y == z->succ[0] ? 0 : 1;
 	w = y->succ[left];
-	printf("x ");print_node(x);
-	printf("z ");print_node(z);
-	printf("y ");print_node(y);
-	printf("w ");print_node(w);
-	if (get_par(w) != get_par(y)) {
+
+	//printf("rebalance 3 node: y ");
+	//print_node(y);
+	//printf("x ");print_node(x);
+	//printf("z ");print_node(z);
+	//printf("y ");print_node(y);
+	//printf("w ");print_node(w);
+
+	if (get_par(w) != get_par(y) && z ) {
 		// 1 child of y
+		//printf("single %s\n", left ? "left" : "right");
 		single_rotate(tree, y, left);
 		prom(y);
 		dem(z);
@@ -320,13 +327,22 @@ static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 			dem(z);
 	} else {
 		// 2 child of y
+		//printf("double %s\n", left ? "left" : "right");
 		double_rotate(tree, y, left);
 		dem(y);
 		//douple_prom(v); do notning
 		//douple_dem(z); do nothing
 	}
 }
-
+/*
+static void strint(char *buff, void *ip)
+{
+	if (*(int*)ip < 0)
+		sprintf(buff, "%d", *(int*)ip);
+	else
+		sprintf(buff, " %d", *(int*)ip);
+}
+*/
 static void rebalance_2_2_leaf(wavl_t **tree, wavl_t *yp)
 {
 	wavl_t *x;
@@ -335,8 +351,13 @@ static void rebalance_2_2_leaf(wavl_t **tree, wavl_t *yp)
 
 	xis_2_child = is_2_child(x);
 	dem(x);
-	if (xis_2_child)
+	//printf("rebalance 22 leaf: x ");
+	//print_node(yp);
+	if (xis_2_child && x->parent != NULL) {
+		//printf("tree 2\n");
+		//wavl_print(stdout, *tree, strint);
 		rebalance_3_child(tree, x, x->parent);
+	}
 }
 
 static void remove_node(wavl_t **tree, wavl_t *n, wavl_t *y)
@@ -362,10 +383,16 @@ static void remove_node(wavl_t **tree, wavl_t *n, wavl_t *y)
 		if (n == yp)
 			yp = y;
 	}
+	//printf("tree 1\n");
+	//wavl_print(stdout, *tree, strint);
+	if (x == *tree && is_leaf(x)) {
+		free(n);
+		return;
+	}
 
 	if (yp != NULL) {
 		if (xis_2_child)
-			rebalance_3_child(tree, n, yp);
+			rebalance_3_child(tree, x, yp);
 		else if (x == NULL && yp->succ[0] == yp->succ[1])
 			rebalance_2_2_leaf(tree, yp);
 	}
@@ -393,7 +420,7 @@ void *wavl_take(wavl_t **tree, void *data, int (*cmp)(void*,void*))
 	wavl_t	*n,
 		*y;
 	void *res;
-
+	//printf("take %d\n", *(int*)data);
 	n = xwavl_get(tree, data, cmp);
 
 	if (n == NULL)
@@ -401,41 +428,98 @@ void *wavl_take(wavl_t **tree, void *data, int (*cmp)(void*,void*))
 
 	res = n->data;
 
+	if (n == *tree && is_leaf(n)) {
+		free(n);
+		*tree = NULL;
+		return res;
+	}
+
+
 	y = get_swap_node(n);
 	remove_node(tree, n, y);
 	return res;
 }
-
-static void print_tree(FILE *out, wavl_t *n, char *pre, bool final, void (*tostr)(char *buff, void*data))
+/*
+static bool is_2_c(wavl_t *n, int i)
 {
+	bool res;
+	if (n->parent == NULL)
+		return false;
+	res = is_2_child(n);
+	res = res && !get_par(n->succ[i]);
+	return res;
+}
+*/
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+static int max_rank(wavl_t *n)
+{
+	int i,r, rank;
+	if (n == NULL)
+		return -1;
+	if (is_leaf(n))
+		return 1;
+	rank = -1;
+	for (i = 0; i < 2; ++i) {
+		r = max_rank(n->succ[i]);
+		rank = MAX(rank, r);
+	}
+	return rank + 1;
+
+}
+
+static void print_tree(FILE *out, wavl_t *n, char *pre, bool final, bool is_2, void (*tostr)(char *buff, void*data))
+{
+	//┐
 	char buff[4096];
 	char str[4096];
-
+	bool is_21 = false;
+	bool is_22 = false;
 	fprintf(out, "%s",pre);
 	strcpy(buff, pre);
+	if(final)
+		strcat(buff, "    ");
+	else
+		strcat(buff, "│   ");
+
 	str[0] = '\0';
 	tostr(str, n->data);
 	if(final)
 		fprintf(out, "└───");
 	else
 		fprintf(out, "├───");
+	/*
+	1.	non-root node is an i-child if its rank difference is i
+		i = r(n->parent) − r(x).
+
+	2. 	A node is i,j if its left and right children have
+		rank differences i and j, respectively
+	*/
 
 	if (is_leaf(n))
-		fprintf(out, "─\033[1m%s (%d)\033[0m\n", str, n->r);
+		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "─────" : "─", str, n->r);
 	else
-		fprintf(out, "┬\033[1m%s (%d)\033[0m\n", str, n->r);
-	if(final)
+		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "────┬" : "┬", str, n->r);
+
+	if (is_2_child(n->succ[0]))
+		is_21 = true;
+	if (is_2_child(n->succ[1]))
+		is_22 = true;
+	//if (is_2_2_node(n)) {
+	//	is_22 = true;
+	//	is_21 = true;
+	//}
+	if(is_2)
 		strcat(buff, "    ");
-	else
-		strcat(buff, "│   ");
+
 	if (n->succ[0] != NULL)
-		print_tree(out, n->succ[0], buff, n->succ[1] == NULL, tostr);
+		print_tree(out, n->succ[0], buff, n->succ[1] == NULL,is_21, tostr);
 	if (n->succ[1] != NULL)
-		print_tree(out, n->succ[1], buff, true, tostr);
+		print_tree(out, n->succ[1], buff, true,is_22, tostr);
 }
 void wavl_print(FILE *out, wavl_t *tree, void (*tostr)(char *buff, void*data))
 {
 	if (tree == NULL)
 		return;
-	print_tree(out, tree, "", true, tostr);
+	printf("H: %d\n", max_rank(tree));
+	print_tree(out, tree, "", true, false, tostr);
 }

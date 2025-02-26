@@ -14,7 +14,10 @@ int *aint(int i)
 }
 void strint(char *buff, void *ip)
 {
-	sprintf(buff, "%d", *(int*)ip);
+	if (*(int*)ip < 0)
+		sprintf(buff, "%d", *(int*)ip);
+	else
+		sprintf(buff, " %d", *(int*)ip);
 }
 static wavl_t *node(void *data)
 {
@@ -49,14 +52,27 @@ bool test_wavl_add(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 	(*n)->parent = p;
 	return true;
 }
-
+void add(wavl_t **t, int i)
+{
+	wavl_put(t, aint(i), cmp);
+	printf("%d\n", i);
+	wavl_print(stdout, *t, strint);
+}
+void rem(wavl_t **t, int i)
+{
+	wavl_take(t, &i, cmp);
+	wavl_print(stdout, *t, strint);
+}
 int main(void)
 {
 	wavl_t *tree = NULL;
 	int i;
-	for (i = 1; i <= 1; i++) {
-		wavl_put(&tree, aint(i), cmp);
-		printf("%d\n", i);
-		wavl_print(stdout, tree, strint);
+	for (i = 1; i <= 0; i++) {
+		add(&tree, i);
 	}
+	//add(&tree, -1);
+	//add(&tree, -2);
+	//add(&tree, 7);
+	//rem(&tree, 7);
+	//rem(&tree, 6);
 }
