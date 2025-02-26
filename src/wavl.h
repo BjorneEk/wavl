@@ -11,6 +11,7 @@ typedef struct wavl {
 } wavl_t;
 
 bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*));
+void *wavl_take(wavl_t **tree, void *data, int (*cmp)(void*,void*));
 void wavl_print(FILE *out, wavl_t *tree, void (*tostr)(char *,void*));
 
 void double_rotate(wavl_t **tree, wavl_t *y, bool left);

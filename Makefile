@@ -7,7 +7,8 @@ TEST_COMMON_DIR:=$(TEST_DIR)/common
 
 MAIN:=main.c
 
-OPT_FLAGS:=-O3 -flto
+#OPT_FLAGS:=-O3 -flto
+OPT_FLAGS:=-O0
 CFLAGS:= -std=c2x -pedantic -Wall -Werror -Wno-newline-eof -Wno-gnu-binary-literal -g $(OPT_FLAGS) -DDEBUG
 
 TEST_BIN:=$(BIN)/test

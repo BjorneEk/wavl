@@ -53,10 +53,25 @@ bool test_wavl_add(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 int main(void)
 {
 	wavl_t *tree = NULL;
-	int i;
-	for (i = 1; i <= 1; i++) {
+	int	i,
+		n,
+		*p;
+	n = 30;
+	for (i = 1; i <= n; i++)
 		wavl_put(&tree, aint(i), cmp);
-		printf("%d\n", i);
-		wavl_print(stdout, tree, strint);
+	wavl_print(stdout, tree, strint);
+	for (i = 1; i <= 8; i++) {
+		p = wavl_take(&tree, &i, cmp);
+		if (*p != i) {
+			printf("Failed for %d -> %d\n", i, *p);
+		}
+		free(p);
 	}
+	wavl_print(stdout, tree, strint);
+	i = 16;
+	p = wavl_take(&tree, &i, cmp);
+	if (*p != i) {
+		printf("Failed for %d -> %d\n", i, *p);
+	}
+	wavl_print(stdout, tree, strint);
 }
