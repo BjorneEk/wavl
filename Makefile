@@ -73,7 +73,7 @@ $(TEST_BIN)/%: $(TEST_DIR)/%.c $(TEST_COMMON_OBJ) $(OBJ)
 	$(eval TEST_MSG_PRINTED:=0) \
 	@echo "\nCompiling tests"))
 
-	$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^
 	@printf " - %-25s <- %s\n" "$@" " $^"
 
 run-tests: $(TESTS)

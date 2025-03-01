@@ -1,4 +1,4 @@
-#include "../src/wavl.h"
+#include "../src/owavl.h"
 #include <stdlib.h>
 #include "common/dla.h"
 #include <time.h>
@@ -42,22 +42,29 @@ static int rto(int max)
 {
 	return rand() % (max + 1);
 }
-void pop(wavl_t **tree, dla_t *l, size_t *len, size_t n)
+void pop(owavl_t *t, dla_t *l, size_t *len, size_t n)
 {
 	size_t i;
 	int v;
+	//char buff[100];
 	for(i = 0; i < n; ++i) {
 		v = rto(n * 5);
-		if (wavl_put(tree, aint(v), cmp)) {
+		//printf("add %d\n", v);
+		//scanf("%s", buff);
+		if (owavl_put(t, aint(v), cmp)) {
 			list_push(l, v);
 			(*len)++;
 		}
+
+
+		//owavl_print(stdout, t, strint);
+		//exit(-1);
 	}
 }
 void test(size_t n)
 {
 	dla_t l;
-	wavl_t *tree;
+	owavl_t tree;
 	size_t	len,
 		left;
 	int	v,
@@ -67,25 +74,36 @@ void test(size_t n)
 	len = 0;
 	left = 0;
 	t_search = 0;
+	owavl_init(&tree);
 	list_init(&l, n);
 	pop(&tree, &l, &len, n);
 	//wavl_print(stdout, tree, strint);
-
+	DLA_FOREACH(&l, int, val, {
+		p = owavl_get(&tree, &val, cmp);
+		if (p == NULL) {
+			printf("Failed for get(%d) -> NULL\n", val);
+			exit(-1);
+		}
+		if (*p != val) {
+			printf("Failed for get(%d) -> %d\n", val, *p);
+			exit(-1);
+		}
+	})
 	left = len;
 	while (left != 0) {
 		i = rto(left - 1);
 		v = list_get(&l, i);
-		t_search += TIME(p = wavl_take(&tree, &v, cmp));
+		t_search += TIME(p = owavl_take(&tree, &v, cmp));
 		if (p == NULL) {
-			printf("Failed for %d -> NULL\n", v);
+			printf("Failed for take(%d) -> NULL\n", v);
 			exit(-1);
 		}
 		if (*p != v) {
-			printf("Failed for %d -> %d\n", v, *p);
+			printf("Failed for take(%d) -> %d\n", v, *p);
 			exit(-1);
 		}
 		//printf("took %d\n", v);
-		//wavl_print(stdout, tree, strint);
+		//owavl_print(stdout, &tree, strint);
 		DLA_FILTER(&l, int, m, *m != v,;)
 		--left;
 	}
