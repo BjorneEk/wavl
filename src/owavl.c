@@ -16,7 +16,7 @@ DLA_GEN(static, u32_t, free, init, len, pop, push, deinit)
 #else
 #define wavl_assert(s)
 #endif
-#define TAG_MASK 0x1
+#define TAG_MASK (0x1)
 #define PTR_MASK (~(uintptr_t)TAG_MASK)
 static void set_ptr(wavlnode_t *n, void *ptr, bool tag)
 {

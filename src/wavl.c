@@ -4,7 +4,7 @@
 #include <string.h>
 #include "wavl.h"
 
-#define TAG_MASK 0x1
+#define TAG_MASK (0x1)
 #define PTR_MASK (~(uintptr_t)TAG_MASK)
 
 static void set_ptr(wavl_t *n, void *ptr, bool tag)
