@@ -6,10 +6,9 @@
 #include <stdio.h>
 
 typedef struct wavl {
-	struct wavl *succ[2];
-	struct wavl *parent;
-	void *data;
-	bool r : 1;
+	struct wavl	*succ[2];
+	struct wavl	*parent;
+	uintptr_t	ptr_with_par;
 } wavl_t;
 
 

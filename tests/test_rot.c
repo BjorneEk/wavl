@@ -1,14 +1,16 @@
 #include "../src/wavl.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include "common/common.h"
-
+#define TAG_MASK 0x1
+#define PTR_MASK (~(uintptr_t)TAG_MASK)
 static wavl_t *node(void *data)
 {
 	wavl_t *res;
 
 	res = calloc(1,sizeof(wavl_t));
-	res->data = data;
-	res->r = 0;
+
+	res->ptr_with_par = ((uintptr_t)data & PTR_MASK);
 	return res;
 }
 bool test_wavl_add(wavl_t **tree, void *data, int (*cmp)(void*, void*))
@@ -25,7 +27,7 @@ bool test_wavl_add(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 	p = NULL;
 
 	while (*n != NULL) {
-		d = cmp(data, (*n)->data);
+		d = cmp(data, (void*)((*n)->ptr_with_par & PTR_MASK));
 		p = *n;
 		n = &(*n)->succ[d < 0 ? 0 : 1];
 		if (d == 0)
@@ -100,7 +102,7 @@ bool tree_eq(wavl_t *t1, wavl_t *t2)
 		return true;
 	if (t1 == NULL || t2 == NULL)
 		return false;
-	if (*(int*)t1->data != *(int*)t2->data)
+	if (*(int*)(t1->ptr_with_par & PTR_MASK) != *(int*)(t2->ptr_with_par & PTR_MASK))
 		return false;
 	return tree_eq(t1->succ[0], t2->succ[0]) && tree_eq(t1->succ[1], t2->succ[1]);
 }

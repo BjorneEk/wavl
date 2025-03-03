@@ -3,21 +3,28 @@
 #include <stdio.h>
 #include <string.h>
 #include "wavl.h"
-#include "types.h"
+
+#define TAG_MASK 0x1
+#define PTR_MASK (~(uintptr_t)TAG_MASK)
+
+static void set_ptr(wavl_t *n, void *ptr, bool tag)
+{
+	n->ptr_with_par = ((uintptr_t)ptr & PTR_MASK) | (tag & TAG_MASK);
+}
+
 
 static wavl_t *node(void *data)
 {
 	wavl_t *res;
 
 	res = calloc(1,sizeof(wavl_t));
-	res->data = data;
-	res->r = 0;
+	set_ptr(res, data, false);
 	return res;
 }
 
 static bool get_par(wavl_t *n)
 {
-	return n == NULL ? true : n->r;
+	return n == 0 ? true : n->ptr_with_par & TAG_MASK;
 }
 
 static wavl_t *sibling(wavl_t *n)
@@ -35,13 +42,13 @@ static bool is_leaf(wavl_t *n)
 static void prom(wavl_t *n)
 {
 	if (n != NULL)
-		n->r = !n->r;
+		n->ptr_with_par ^= 1;
 }
 
 static void dem(wavl_t *n)
 {
 	if (n != NULL)
-		n->r = !n->r;
+		n->ptr_with_par ^= 1;
 }
 
 void double_rotate(wavl_t **tree, wavl_t *y, bool left)
@@ -153,7 +160,7 @@ bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 	p = NULL;
 
 	while (*n != NULL) {
-		d = cmp(data, (*n)->data);
+		d = cmp(data, (void*)((*n)->ptr_with_par & PTR_MASK));
 		p = *n;
 		n = &(*n)->succ[d < 0 ? 0 : 1];
 		if (d == 0)
@@ -216,7 +223,7 @@ static wavl_t *xwavl_get(wavl_t **tree, void *data, int (*cmp)(void*,void*))
 
 	n = *tree;
 	while (n != NULL) {
-		d = cmp(data, n->data);
+		d = cmp(data, (void*)(n->ptr_with_par & PTR_MASK));
 		if (d == 0)
 			return n;
 		n = n->succ[d < 0 ? 0 : 1];
@@ -230,7 +237,7 @@ void *wavl_get(wavl_t **tree, void *data, int (*cmp)(void*,void*))
 	n = xwavl_get(tree, data, cmp);
 	if (n == NULL)
 		return NULL;
-	return n->data;
+	return (void*)(n->ptr_with_par & PTR_MASK);
 }
 
 static void swap_in(wavl_t **tree, wavl_t *new, wavl_t *old)
@@ -260,7 +267,7 @@ static void swap_in(wavl_t **tree, wavl_t *new, wavl_t *old)
 		old->succ[i] = NULL;
 	}
 	old->succ[0] = NULL;
-	new->r = old->r;
+	new->ptr_with_par = (new->ptr_with_par & PTR_MASK) | (old->ptr_with_par & TAG_MASK);
 	old->parent = NULL;
 }
 static bool is_2_2_node(wavl_t *y)
@@ -438,7 +445,7 @@ void *wavl_take(wavl_t **tree, void *data, int (*cmp)(void*,void*))
 	if (n == NULL)
 		return NULL;
 
-	res = n->data;
+	res = (void*)(n->ptr_with_par & PTR_MASK);
 
 	if (n == *tree && is_leaf(n)) {
 		free(n);
@@ -494,7 +501,7 @@ static void print_tree(FILE *out, wavl_t *n, char *pre, bool final, bool is_2, v
 		strcat(buff, "│   ");
 
 	str[0] = '\0';
-	tostr(str, n->data);
+	tostr(str, (void*)(n->ptr_with_par & PTR_MASK));
 	if(final)
 		fprintf(out, "└───");
 	else
@@ -508,9 +515,9 @@ static void print_tree(FILE *out, wavl_t *n, char *pre, bool final, bool is_2, v
 	*/
 
 	if (is_leaf(n))
-		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "─────" : "─", str, n->r);
+		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "─────" : "─", str, (int)(n->ptr_with_par & TAG_MASK));
 	else
-		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "────┬" : "┬", str, n->r);
+		fprintf(out, "%s\033[1m\033[34m%s\033[0m (%d)\033[0m\n",is_2 ? "────┬" : "┬", str, (int)(n->ptr_with_par & TAG_MASK));
 
 	if (is_2_child(n->succ[0]))
 		is_21 = true;
