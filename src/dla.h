@@ -25,6 +25,7 @@ typedef struct dla {void *data; size_t allocated; size_t length;} dla_t;
 #define _GEN_PROT_push(ts, ty, name)	ts void name ## _push(dla_t *dla, ty d)
 #define _GEN_PROT_new(ts, ty, name)	ts ty * name ## _new(dla_t *dla)
 #define _GEN_PROT_alloc(ts, ty, name)	ts void name ## _alloc(dla_t *dla, size_t n)
+#define _GEN_PROT_data(ts, ty, name)	ts ty * name ## _data(dla_t *dla)
 
 #define _GEN_set(ty, name)		{ ((ty*)dla->data)[i] = val;				}
 #define _GEN_get(ty, name)		{ return ((ty*)dla->data)[i];				}
@@ -33,6 +34,7 @@ typedef struct dla {void *data; size_t allocated; size_t length;} dla_t;
 #define _GEN_len(ty, name)		{ return dla->length;					}
 #define _GEN_deinit(ty, name)		{ free(dla->data); dla->data = NULL; dla->length = 0;	}
 #define _GEN_clear(ty, name)		{ dla->length = 0;					}
+#define _GEN_data(ty, name)		{ return (ty*)dla->data; }
 
 #define _GEN_init(ty, name)										\
 {													\

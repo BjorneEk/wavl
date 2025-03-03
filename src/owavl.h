@@ -4,20 +4,20 @@
 #include "dla.h"
 #include "types.h"
 #include <stdio.h>
+
 typedef struct wawlnode {
-	bool	p : 1;
-	u32_t	d : 31;
-	u32_t	succ[2];
-	u32_t	parent;
+	uintptr_t	ptr_with_par;
+	u32_t		parent;
+	u32_t		succ[2];
 } wavlnode_t;
+
 
 typedef struct owavl {
 	u32_t root;
 	dla_t nodes;
-	dla_t data;
-	dla_t free_n;
-	dla_t free_d;
+	dla_t free;
 } owavl_t;
+void owavl_free(owavl_t *t);
 void owavl_init(owavl_t *tree);
 bool owavl_put(owavl_t *tree, void *data, int (*cmp)(void*, void*));
 void *owavl_take(owavl_t *tree, void *data, int (*cmp)(void*,void*));

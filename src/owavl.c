@@ -4,21 +4,29 @@
 #include <string.h>
 #include "owavl.h"
 
-DLA_GEN(static, wavlnode_t, nodes, init, getp, new, len)
-DLA_GEN(static, u32_t, free, init, len, pop, push)
-DLA_GEN(static, void*, data, init, push, len, get, getp)
+DLA_GEN(static, wavlnode_t, nodes, init, getp, new, len, deinit, data)
+DLA_GEN(static, u32_t, free, init, len, pop, push, deinit)
+//DLA_GEN(static, void*, data, init, push, len, get, getp, deinit, data)
 
 #define MAX_LEN (0x7FFFFFFF)
+#ifndef NODEBUG
 #define wavl_assert(s) do {	\
 	if (!(s)){ fprintf(stderr, "wavl assertion failed for %s (%s: %d)\n", #s, __func__, __LINE__);exit(-1);}	\
 	} while(0);
+#else
+#define wavl_assert(s)
+#endif
+#define TAG_MASK 0x1
+#define PTR_MASK (~(uintptr_t)TAG_MASK)
+static void set_ptr(wavlnode_t *n, void *ptr, bool tag)
+{
+	n->ptr_with_par = ((uintptr_t)ptr & PTR_MASK) | (tag & TAG_MASK);
+}
 
 void owavl_init(owavl_t *t)
 {
-	data_init(&t->data, 10);
 	nodes_init(&t->nodes, 10);
-	free_init(&t->free_n, 10);
-	free_init(&t->free_d, 10);
+	free_init(&t->free, 10);
 	// allocate first node as empry so index 0 is the NULL representation
 	nodes_new(&t->nodes);
 	t->root = 0;
@@ -26,21 +34,22 @@ void owavl_init(owavl_t *t)
 
 inline static void *get_data(owavl_t *t, u32_t n)
 {
-	return data_get(&t->data, nodes_getp(&t->nodes, n)->d);
+
+	return (void *)(nodes_data(&t->nodes)[n].ptr_with_par & PTR_MASK);
 }
 
-static u32_t *succ(owavl_t *t, u32_t n, int i)
+static inline u32_t *succ(owavl_t *t, u32_t n, int i)
 {
-	return &nodes_getp(&t->nodes, n)->succ[i];
+	return &nodes_data(&t->nodes)[n].succ[i];
 }
-static u32_t *parent(owavl_t *t, u32_t n)
+
+static inline u32_t *parent(owavl_t *t, u32_t n)
 {
-	return &nodes_getp(&t->nodes, n)->parent;
+	return &nodes_data(&t->nodes)[n].parent;
 }
 static void free_node(owavl_t *t, u32_t n)
 {
-	free_push(&t->free_n, n);
-	free_push(&t->free_d, nodes_getp(&t->nodes, n)->d);
+	free_push(&t->free, n);
 }
 
 static u32_t new_node(owavl_t *t, void *data)
@@ -48,23 +57,15 @@ static u32_t new_node(owavl_t *t, void *data)
 	u32_t res;
 	wavlnode_t *n;
 
-	if (free_len(&t->free_n) > 0) {
-		res = free_pop(&t->free_n);
+	if (free_len(&t->free) > 0) {
+		res = free_pop(&t->free);
 		n = nodes_getp(&t->nodes, res);
 	} else {
 		n = nodes_new(&t->nodes);
 		res = nodes_len(&t->nodes) - 1;
 	}
-	if (free_len(&t->free_d) > 0) {
-		n->d = free_pop(&t->free_d);
-		*data_getp(&t->data, n->d) = data;
-	} else {
-		data_push(&t->data, data);
-		n->d = data_len(&t->data) - 1;
-	}
 
-
-	n->p = 0;
+	set_ptr(n, data, false);
 	n->succ[1] = 0;
 	n->succ[0] = 0;
 	n->parent = 0;
@@ -73,7 +74,7 @@ static u32_t new_node(owavl_t *t, void *data)
 
 static bool get_par(owavl_t *t, u32_t n)
 {
-	return n == 0 ? true : nodes_getp(&t->nodes, n)->p;
+	return n == 0 ? true : nodes_data(&t->nodes)[n].ptr_with_par & TAG_MASK;
 }
 
 static u32_t sibling(owavl_t *t, u32_t n)
@@ -82,11 +83,11 @@ static u32_t sibling(owavl_t *t, u32_t n)
 			*pp;
 	if (n == 0)
 		return 0;
-	np = nodes_getp(&t->nodes, n);
+	np = &nodes_data(&t->nodes)[n];
 
 	if (np->parent == 0)
 		return 0;
-	pp = nodes_getp(&t->nodes, np->parent);
+	pp = &nodes_data(&t->nodes)[np->parent];
 
 	return pp->succ[n == pp->succ[0] ? 1 : 0];
 }
@@ -96,7 +97,7 @@ static bool is_leaf(owavl_t *t, u32_t n)
 	wavlnode_t *np;
 
 	wavl_assert(n != 0);
-	np = nodes_getp(&t->nodes, n);
+	np = &nodes_data(&t->nodes)[n];
 	return np->succ[0] == 0 && np->succ[1] == 0;
 }
 
@@ -104,8 +105,8 @@ static void prom(owavl_t *t, u32_t n)
 {
 	wavlnode_t *np;
 	if (n != 0) {
-		np = nodes_getp(&t->nodes, n);
-		np->p = !np->p;
+		np = &nodes_data(&t->nodes)[n];
+		np->ptr_with_par ^= 1;
 	}
 }
 
@@ -113,8 +114,8 @@ static void dem(owavl_t *t, u32_t n)
 {
 	wavlnode_t *np;
 	if (n != 0) {
-		np = nodes_getp(&t->nodes, n);
-		np->p = !np->p;
+		np = &nodes_data(&t->nodes)[n];
+		np->ptr_with_par ^= 1;
 	}
 }
 
@@ -132,21 +133,21 @@ static void odouble_rotate(owavl_t *t, u32_t y, bool left)
 	wavl_assert(y != 0);
 
 	i = left ? 0 : 1;
-	yp = nodes_getp(&t->nodes, y);
+	yp = &nodes_data(&t->nodes)[y];
 	z = yp->parent;
 	v = yp->succ[i];
 
 	wavl_assert(z != 0);
 	wavl_assert(v != 0);
-	zp = nodes_getp(&t->nodes, z);
-	vp = nodes_getp(&t->nodes, v);
+	zp = &nodes_data(&t->nodes)[z];
+	vp = &nodes_data(&t->nodes)[v];
 
 
 	if (z == t->root) {
 		t->root = v;
 		vp->parent = 0;
 	} else {
-		zpp = nodes_getp(&t->nodes, zp->parent);
+		zpp = &nodes_data(&t->nodes)[zp->parent];
 		zpi = z == zpp->succ[0] ? 0 : 1;
 		zpp->succ[zpi] = v;
 		vp->parent = zp->parent;
@@ -154,12 +155,12 @@ static void odouble_rotate(owavl_t *t, u32_t y, bool left)
 
 	zp->succ[!i] = vp->succ[i];
 	if (vp->succ[i] != 0) {
-		nodes_getp(&t->nodes, vp->succ[i])->parent = z;
+		nodes_data(&t->nodes)[vp->succ[i]].parent = z;
 	}
 
 	yp->succ[i] = vp->succ[!i];
 	if (vp->succ[!i] != 0)
-		nodes_getp(&t->nodes, vp->succ[!i])->parent = y;
+		nodes_data(&t->nodes)[vp->succ[!i]].parent = y;
 
 	vp->succ[i] = z;
 	zp->parent = v;
@@ -178,21 +179,21 @@ static void osingle_rotate(owavl_t *t, u32_t x, bool left)
 
 	i = left? 0 : 1;
 	wavl_assert(x != 0);
-	xp = nodes_getp(&t->nodes, x);
+	xp = &nodes_data(&t->nodes)[x];
 	y = xp->parent;
 	wavl_assert(y != 0);
-	yp = nodes_getp(&t->nodes, y);
+	yp = &nodes_data(&t->nodes)[y];
 
 	yp->succ[!i] = xp->succ[i];
 	if (yp->succ[!i] != 0)
-		nodes_getp(&t->nodes, yp->succ[!i])->parent = y;
+		nodes_data(&t->nodes)[yp->succ[!i]].parent = y;
 
 	xp->succ[i] = y;
 	if (yp->parent == 0) {
 		t->root = x;
 		xp->parent = 0;
 	} else {
-		ypp = nodes_getp(&t->nodes, yp->parent);
+		ypp = &nodes_data(&t->nodes)[yp->parent];
 		yid = ypp->succ[0] == y ? 0 : 1;
 		ypp->succ[yid] = x;
 		xp->parent = yp->parent;
@@ -208,7 +209,7 @@ static bool is_0_1_node(owavl_t *t, u32_t x)
 		pars;
 
 	par = get_par(t, x);
-	xp = (x != 0) ? nodes_getp(&t->nodes, x) : NULL;
+	xp = (x != 0) ? &nodes_data(&t->nodes)[x] : NULL;
 	if (xp == NULL)
 		parp = true;
 	else {
@@ -226,7 +227,7 @@ static bool is_0_2_node(owavl_t *t, u32_t x)
 		pars;
 
 	par = get_par(t, x);
-	xp = (x != 0) ? nodes_getp(&t->nodes, x) : NULL;
+	xp = (x != 0) ? &nodes_data(&t->nodes)[x] : NULL;
 	if (xp == NULL)
 		parp = true;
 	else {
@@ -240,7 +241,7 @@ static bool is_2_child(owavl_t *t, u32_t x)
 {
 	wavlnode_t *xp;
 	bool	parp;
-	xp = (x != 0) ? nodes_getp(&t->nodes, x) : NULL;
+	xp = (x != 0) ? &nodes_data(&t->nodes)[x] : NULL;
 	parp = xp != NULL ? get_par(t, xp->parent) : true;
 	return get_par(t, x) == parp;
 }
@@ -265,22 +266,25 @@ bool owavl_put(owavl_t *t, void *data, int (*cmp)(void*, void*))
 		i,
 		wsucc;
 	bool unbalanced;
-
+	wavlnode_t *np;
 
 	if (t->root == 0) {
 		t->root = new_node(t, data);
 		return true;
 	}
 
+
 	n = t->root;
+	np = &nodes_data(&t->nodes)[n];
 	p = 0;
 
 	while (n != 0) {
-		d = cmp(data, get_data(t, n));
+		d = cmp(data, (void*)(np->ptr_with_par & PTR_MASK));
 		p = n;
-		n = *succ(t, n, d < 0 ? 0 : 1);
+		n = np->succ[d < 0 ? 0 : 1];
 		if (d == 0)
 			return false;
+		np = &nodes_data(&t->nodes)[n];
 	}
 	unbalanced = is_leaf(t, p);
 	wsucc = cmp(data, get_data(t, p)) < 0 ? 0 : 1;
@@ -327,13 +331,15 @@ static u32_t xwavl_get(owavl_t *t, void *data, int (*cmp)(void*,void*))
 {
 	u32_t n;
 	int d;
+	wavlnode_t *nodes;
 
+	nodes = t->nodes.data;
 	n = t->root;
 	while (n != 0) {
-		d = cmp(data, get_data(t, n));
+		d = cmp(data, (void*)(nodes[n].ptr_with_par & PTR_MASK));
 		if (d == 0)
 			return n;
-		n = *succ(t, n, d < 0 ? 0 : 1);
+		n = nodes[n].succ[d < 0 ? 0 : 1];
 	}
 	return 0;
 }
@@ -341,10 +347,27 @@ static u32_t xwavl_get(owavl_t *t, void *data, int (*cmp)(void*,void*))
 void *owavl_get(owavl_t *t, void *data, int (*cmp)(void*,void*))
 {
 	u32_t n;
-	n = xwavl_get(t, data, cmp);
-	if (n == 0)
-		return NULL;
-	return get_data(t, n);
+	int d;
+	void *p;
+	wavlnode_t *nodes;
+
+	nodes = t->nodes.data;
+	n = t->root;
+	while (n != 0) {
+		p = (void*)(nodes[n].ptr_with_par & PTR_MASK);
+		d = cmp(data, p);
+		if (d == 0)
+			return p;
+		n = nodes[n].succ[d < 0 ? 0 : 1];
+	}
+	return NULL;
+}
+
+void owavl_free(owavl_t *t)
+{
+	nodes_deinit(&t->nodes);
+	free_deinit(&t->free);
+	t->root = 0;
 }
 
 static void swap_in(owavl_t *t, u32_t new, u32_t old)
@@ -383,7 +406,7 @@ static void swap_in(owavl_t *t, u32_t new, u32_t old)
 		op->succ[i] = 0;
 	}
 	op->succ[0] = 0;
-	np->p = op->p;
+	np->ptr_with_par = (np->ptr_with_par & PTR_MASK) | (op->ptr_with_par & TAG_MASK);
 	op->parent = 0;
 }
 static bool is_2_2_node(owavl_t *t, u32_t y)

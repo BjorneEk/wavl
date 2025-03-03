@@ -20,5 +20,5 @@ void wavl_print(FILE *out, wavl_t *tree, void (*tostr)(char *,void*));
 
 void double_rotate(wavl_t **tree, wavl_t *y, bool left);
 void single_rotate(wavl_t **tree, wavl_t *x, bool left);
-
+void wavl_free(wavl_t **tree);
 #endif

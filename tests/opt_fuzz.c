@@ -1,47 +1,10 @@
 #include "../src/owavl.h"
 #include <stdlib.h>
 #include "common/dla.h"
+#include "common/common.h"
 #include <time.h>
 DLA_GEN(static,int,list, init, push, get)
-#define TIME(...)	({							\
-	double _time_res;							\
-	do {									\
-		struct timespec _time_start, _time_end;				\
-		long _time_seconds, _time_nanoseconds;				\
-		clock_gettime(CLOCK_MONOTONIC, &_time_start);			\
-		__VA_ARGS__;							\
-		clock_gettime(CLOCK_MONOTONIC, &_time_end);			\
-		_time_seconds = _time_end.tv_sec - _time_start.tv_sec;		\
-		_time_nanoseconds = _time_end.tv_nsec - _time_start.tv_nsec;	\
-		if (_time_nanoseconds < 0) {					\
-			_time_seconds--;					\
-			_time_nanoseconds += 1000000000;			\
-		}								\
-		_time_res = _time_seconds + _time_nanoseconds / 1e9;		\
-	} while(0);								\
-	_time_res;								\
-})
-int cmp(void *a, void *b)
-{
-	return *(int*)a - *(int*)b;
-}
 
-int *aint(int i)
-{
-	int *r;
-	r = malloc(sizeof(int));
-	*r = i;
-	return r;
-}
-void strint(char *buff, void *ip)
-{
-	sprintf(buff, "%d", *(int*)ip);
-}
-
-static int rto(int max)
-{
-	return rand() % (max + 1);
-}
 void pop(owavl_t *t, dla_t *l, size_t *len, size_t n)
 {
 	size_t i;
@@ -55,10 +18,6 @@ void pop(owavl_t *t, dla_t *l, size_t *len, size_t n)
 			list_push(l, v);
 			(*len)++;
 		}
-
-
-		//owavl_print(stdout, t, strint);
-		//exit(-1);
 	}
 }
 void test(size_t n)
@@ -70,6 +29,7 @@ void test(size_t n)
 	int	v,
 		i,
 		*p;
+	perf_t perf;
 	double t_search;
 	len = 0;
 	left = 0;
@@ -93,7 +53,10 @@ void test(size_t n)
 	while (left != 0) {
 		i = rto(left - 1);
 		v = list_get(&l, i);
-		t_search += TIME(p = owavl_take(&tree, &v, cmp));
+		PERF_START(perf);
+		p = owavl_take(&tree, &v, cmp);
+		PERF_END(perf);
+		t_search = perf_seconds(perf);
 		if (p == NULL) {
 			printf("Failed for take(%d) -> NULL\n", v);
 			exit(-1);
@@ -107,9 +70,10 @@ void test(size_t n)
 		DLA_FILTER(&l, int, m, *m != v,;)
 		--left;
 	}
-	printf("search time: %lf\n", t_search);
+	REPORT("search time: %lf\n", t_search);
 }
 int main(void)
 {
+	srand(time(NULL));
 	test(50000);
 }

@@ -1,21 +1,7 @@
 #include "../src/wavl.h"
 #include <stdlib.h>
+#include "common/common.h"
 
-int cmp(void *a, void *b)
-{
-	return *(int*)a - *(int*)b;
-}
-int *aint(int i)
-{
-	int *r;
-	r = malloc(sizeof(int));
-	*r = i;
-	return r;
-}
-void strint(char *buff, void *ip)
-{
-	sprintf(buff, "%d", *(int*)ip);
-}
 static wavl_t *node(void *data)
 {
 	wavl_t *res;

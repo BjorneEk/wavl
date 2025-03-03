@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "wavl.h"
+#include "types.h"
 
 static wavl_t *node(void *data)
 {
@@ -195,6 +196,17 @@ bool wavl_put(wavl_t **tree, void *data, int (*cmp)(void*, void*))
 	}
 
 	return true;
+}
+void wavl_free(wavl_t **tree)
+{
+	int i;
+
+	if (*tree == NULL)
+		return;
+	for (i = 0; i < 2; ++i)
+		wavl_free(&(*tree)->succ[i]);
+	free(*tree);
+	*tree = NULL;
 }
 
 static wavl_t *xwavl_get(wavl_t **tree, void *data, int (*cmp)(void*,void*))
