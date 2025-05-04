@@ -1,6 +1,6 @@
+#include "common/common.h"
 #include "../src/wavl.h"
 #include "common/dla.h"
-#include "common/common.h"
 #include "common/dla.h"
 DLA_GEN(static,int,list, init, push, getp)
 void populate(wavl_t **t, dla_t *l, size_t n)

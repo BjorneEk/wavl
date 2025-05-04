@@ -1,7 +1,7 @@
+#include "common/common.h"
 #include "../src/owavl.h"
 #include <stdlib.h>
 #include "common/dla.h"
-#include "common/common.h"
 #include <time.h>
 DLA_GEN(static,int,list, init, push, get)
 

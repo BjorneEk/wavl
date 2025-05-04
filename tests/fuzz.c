@@ -1,8 +1,7 @@
+#include "common/common.h"
 #include "../src/wavl.h"
 #include <stdlib.h>
 #include "common/dla.h"
-#include <time.h>
-#include "common/common.h"
 DLA_GEN(static,int,list, init, push, get)
 
 void pop(wavl_t **tree, dla_t *l, size_t *len, size_t n)

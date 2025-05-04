@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <unistd.h>
 
-int N = 10000;
+int N = 1000;
 int cmp(void *a, void *b)
 {
 	return *(int*)a - *(int*)b;

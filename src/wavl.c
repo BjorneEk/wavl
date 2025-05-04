@@ -283,6 +283,7 @@ static void print_node(wavl_t *n)
 		n != NULL ? n->succ[1] != NULL ? *(int*)n->succ[1]->data : -1 : -1, get_par(n));
 }
 */
+
 static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 {
 	wavl_t	*x,
@@ -353,6 +354,7 @@ static void rebalance_3_child(wavl_t **tree, wavl_t *n, wavl_t *np)
 		//douple_dem(z); do nothing
 	}
 }
+
 /*
 static void strint(char *buff, void *ip)
 {
@@ -390,6 +392,7 @@ static void remove_node(wavl_t **tree, wavl_t *n, wavl_t *y)
 		x->parent = y->parent;
 
 	yp = y->parent;
+	xis_2_child = false;
 	if (yp == NULL) {
 		*tree = x;
 	} else {
@@ -402,6 +405,7 @@ static void remove_node(wavl_t **tree, wavl_t *n, wavl_t *y)
 		if (n == yp)
 			yp = y;
 	}
+
 	//printf("tree 1\n");
 	//wavl_print(stdout, *tree, strint);
 	if (x == *tree && is_leaf(x)) {

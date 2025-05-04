@@ -534,6 +534,7 @@ static void remove_node(owavl_t *t, u32_t n, u32_t y)
 		*parent(t, x) = *parent(t, y);
 
 	yp = *parent(t, y);
+	xis_2_child = false;
 	if (yp == 0) {
 		t->root = x;
 	} else {

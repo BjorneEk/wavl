@@ -7,10 +7,32 @@ TEST_COMMON_DIR:=$(TEST_DIR)/common
 
 MAIN:=main.c
 
-OPT_FLAGS:=-O3 -flto
-#OPT_FLAGS:=-O0
-SILENCE=-Wno-gnu-statement-expression-from-macro-expansion
-CFLAGS:= -std=c2x -pedantic -Wall -Werror -Wno-newline-eof -Wno-gnu-binary-literal -g $(OPT_FLAGS) $(SILENCE) -DNODEBUG
+#OPT_FLAGS:=-O3 -flto
+OPT_FLAGS:=-O2
+
+PLATFORM := $(shell uname -s)
+
+CFLAGS:= -std=c2x \
+	-pedantic \
+	-Wall \
+	-Werror \
+	-g $(OPT_FLAGS) -DNODEBUG
+
+DATE:=$(shell command -v gdate || echo date)
+
+ifeq ($PLATFORM),Linux)
+	LDLIBS+=-lrt
+	CFLAGS+=-lrt \
+		-fno-omit-frame-pointer \
+		-fasynchronous-unwind-tables \
+		-D_POSIX_C_SOURCE=199309L
+	LDFLAGS+=-rdynamic
+endif
+
+ifeq ($(shell $(CC) --version | grep -ci clang),1)
+	CFLAGS += -Wno-gnu-statement-expression-from-macro-expansion \
+		-Wno-gnu-binary-literal -Wno-newline-eof
+endif
 
 TEST_BIN:=$(BIN)/test
 LIB_TARGET:=$(BIN)/$(LIBNAME)
@@ -24,6 +46,8 @@ TEST_SRC:=$(wildcard $(TEST_DIR)/*.c)
 OBJ:=$(patsubst $(SRC_DIR)/%.c, $(BUILD)/%.o, $(SRC))
 TEST_COMMON_OBJ:=$(patsubst $(TEST_COMMON_DIR)/%.c, $(TEST_BUILD)/%.o, $(TEST_COMMON))
 TESTS:=$(patsubst $(TEST_DIR)/%.c, $(TEST_BIN)/%, $(TEST_SRC))
+
+PERF_TEST:=$(TEST_BIN)/fuzz_performance
 
 UNAME:=$(shell uname -s)
 
@@ -78,6 +102,12 @@ $(TEST_BIN)/%: $(TEST_DIR)/%.c $(TEST_COMMON_OBJ) $(OBJ)
 	@$(CC) $(CFLAGS) -o $@ $^
 	@printf " - %-25s <- %s\n" "$@" " $^"
 
+perf: $(PERF_TEST)
+	perf record -g -- $^
+	perf report
+
+# duration=$$(bc <<< "scale=5; $$end_time - $$start_time");
+# duration=$$(echo "$$end_time - $$start_time" | bc -l);
 run-tests: $(TESTS)
 	@rm -rf $(FILES)
 	@mkdir -p $(FILES)
@@ -85,15 +115,15 @@ run-tests: $(TESTS)
 	@pass=0; fail=0; \
 	green='\033[32m'; red='\033[31m'; purple='\033[35m';reset='\033[0m'; \
 	for test in $(TESTS); do \
-		start_time=$$(gdate +%s.%N);\
+		start_time=$$($(DATE) +%s.%N); \
 		if $$test; then \
-			end_time=$$(gdate +%s.%N); \
-			duration=$$(bc <<< "scale=5; $$end_time - $$start_time"); \
+			end_time=$$($(DATE) +%s.%N); \
+			duration=$$(echo "$$end_time - $$start_time" | bc -l); \
 			printf "%-50s %bPASSED%b %b󱎫%b %.3fs\n" "Test $$(basename $$test):" "$${green}" "$${reset}" "$${purple}" "$${reset}" $$duration; \
 			pass=$$((pass+1)); \
 		else \
-			end_time=$$(gdate +%s.%N); \
-			duration=$$(bc <<< "scale=5; $$end_time - $$start_time"); \
+			end_time=$$($(DATE) +%s.%N); \
+			duration=$$(echo "$$end_time - $$start_time" | bc -l); \
 			printf "%-50s %bFAILED%b %b󱎫%b %.3fs\n" "Test $$(basename $$test):" "$${red}" "$${reset}" "$${purple}" "$${reset}" $$duration; \
 			fail=$$((fail+1)); \
 		fi; \
